@@ -1,0 +1,6 @@
+name: hadv-gubbins
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - bioconda::gubbins=2.4.1

@@ -1,0 +1,6 @@
+name: hadv-gubbins
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - bioconda::nextalign=1.0.8

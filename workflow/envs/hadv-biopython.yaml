@@ -1,0 +1,6 @@
+name: hadv-biopython
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - bioconda::biopython=1.79

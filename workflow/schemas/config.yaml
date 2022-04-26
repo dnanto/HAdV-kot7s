@@ -1,0 +1,89 @@
+$schema: "http://json-schema.org/draft-06/schema#"
+
+description: the parameters for the workflow
+
+properties:
+  # global
+  glob:
+    type: string
+    description: the path glob pattern to the input gzip FASTA files
+  seed:
+    type: integer
+    description: the value to initialize the random number generator
+    default: 7080
+  min_unk:
+    type: number
+    description: the minimum percentage of unknown characters in a sequence in [0, 1]
+    default: 0.01
+  max_dup:
+    type: integer
+    description: the maximum number of duplicate sequences
+    default: 3
+  # nextalign
+  nuc-seed-length:
+    type: number
+    description: the spacing between seeds during nucleotide alignment
+    default: 27
+  nuc-seed-spacing:
+    type: number
+    description: the seed length for nucleotide alignment. Seeds should be long enough to be unique, but short enough to match with high probability
+    default: 10
+  max-indel:
+    type: number
+    description: the maximum length of insertions or deletions allowed to proceed with alignment
+    default: 700
+  # IQ-TREE v2.0.3
+  ufboot:
+    type: integer
+    description: the replicates for ultrafast bootstrap (>=1000)
+    default: 1000
+  ufjack:
+    type: integer
+    description: the replicates for ultrafast jackknife (>=1000)
+    default: 1000
+  # Gubbins v2.4.1
+  tree_builder:
+    type: string
+    description: the application to use for tree building {raxml,fasttree,hybrid}
+    default: raxml
+  iterations:
+    type: integer
+    description: the maximum number of iterations
+    default: 1000
+  filter_percentage:
+    type: integer
+    description: the value to filter out taxa with more than this percentage of gaps in [0, 100]
+    default: 100
+  # BactDating v1.1
+  reps:
+    type: integer
+    description: the number of replicate runs per model
+    default: 3
+  models:
+    type: array
+    description: the models to test
+    default:
+      - poisson
+      - negbin
+      - strictgamma
+      - relaxedgamma
+      - mixedgamma
+      - arc
+      - carc
+      - mixedcarc
+  nbIts:
+    type: integer
+    description: the number of MCMC iterations to perform
+    default: 1000000
+  thin:
+    type: integer
+    description: the thining interval between recorded MCMC samples
+    default: 100
+  burn:
+    type: number
+    description: the burn-in in percentage [0, 1]
+    default: 0.50
+  ess:
+    type: number
+    description: the ESS threshold
+    default: 200

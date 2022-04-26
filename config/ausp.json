@@ -1,0 +1,35 @@
+{
+  "title": "HAdV - Keeper of the Seven Species",
+  "maintainers": [
+    {
+      "name": "Daniel Antonio Negrón",
+      "url": "https://github.com/dnanto"
+    }
+  ],
+  "build_url": "https://github.com/dnanto/HAdV-kot7s",
+  "colorings": [
+    {
+      "key": "genotype",
+      "title": "genotype",
+      "type": "categorical"
+    },
+    {
+      "key": "country_code",
+      "title": "country_code",
+      "type": "categorical"
+    }
+  ],
+  "geo_resolutions": [
+    "location"
+  ],
+  "panels": [
+    "tree",
+    "map"
+  ],
+  "display_defaults": {
+    "map_triplicate": true
+  },
+  "filters": [
+    "genotype"
+  ]
+}

@@ -1,0 +1,6 @@
+name: hadv-augur
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - bioconda::augur=15.0.0

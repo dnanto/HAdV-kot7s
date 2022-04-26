@@ -1,0 +1,291 @@
+include: "rules/common.smk"
+include: "rules/target.smk"
+
+
+rule files:
+    params:
+        ausp=root_cfg / "ausp.json",
+        excl=root_cfg / "excl.txt",
+        meta=root_dat / "meta.tsv",
+        coor=root_dat / "coor.tsv",
+        fast=root_dat / "{species}.fasta",
+        gff3=root_dat / "{species}.gff3",
+
+
+rule extract:
+    message:
+        "Extract and format sequences: {wildcards.species}."
+    input:
+        seqs=root_dat / "{species}.fasta.gz",
+    output:
+        seqs=root_out / "{species}" / "ext.fasta",
+    log:
+        log=root_out / "{species}" / "ext.log",
+    threads: 1
+    shell:
+        """
+        gunzip -c {input.seqs:q} | \
+        sed -E -e '/^>/ s/:.*//g' -e '/^>/ s/ .*//g' -e '/^[^>]/ s/[^ACGTNacgtn-]/N/g' \
+            1> {output.seqs:q} \
+            2> {log.log:q}
+        """
+
+
+rule addmeta:
+    message:
+        "Calculate sequence properties: {wildcards.species}."
+    input:
+        seqs=rules.extract.output.seqs,
+        meta=rules.files.params.meta,
+    output:
+        meta=root_out / "{species}" / "meta.tsv",
+    log:
+        log=root_out / "{species}" / "meta.log",
+    threads: 1
+    conda:
+        "envs/hadv-biopython.yaml"
+    script:
+        "scripts/py/addmeta.py"
+
+
+rule filter:
+    message:
+        "Extract, format, and filter sequences: {wildcards.species}."
+    input:
+        data=rules.extract.output.seqs,
+        meta=rules.addmeta.output.meta,
+        excl=rules.files.params.excl,
+    output:
+        root_out / "{species}" / "seq.fasta",
+    log:
+        out=root_out / "{species}" / "seq.out.log",
+        err=root_out / "{species}" / "seq.err.log",
+    params:
+        seed=config["seed"],
+        max_dup=config["max_dup"],
+        min_unk=config["min_unk"],
+    threads: 1
+    conda:
+        "envs/hadv-augur.yaml"
+    shell:
+        """
+        augur filter \
+          --metadata {input.meta:q} \
+          --sequences {input.data:q} \
+          --query "unknown<={params.min_unk}" \
+          --exclude {input.excl:q} \
+          --exclude-where "date=?" \
+          --group-by seguid \
+          --sequences-per-group {params.max_dup} \
+          --subsample-seed {params.seed} \
+          --output {output:q} \
+          1> {log.out:q} \
+          2> {log.err:q}
+        """
+
+
+rule align:
+    message:
+        "Perform gene-aware multiple sequence alignment: {wildcards.species}."
+    input:
+        seq=rules.filter.output,
+        ref=rules.files.params.fast,
+        gff=rules.files.params.gff3,
+    output:
+        root_out / "{species}" / "seq.aligned.fasta",
+    log:
+        out=root_out / "{species}" / "aln.out.log",
+        err=root_out / "{species}" / "aln.err.log",
+    params:
+        genes=lambda wildcards, output: genes[Path(output[0]).parent.name],
+        output_dir=lambda wildcards, output: Path(output[0]).parent,
+        nuc_seed_length=config["nuc-seed-length"],
+        nuc_seed_spacing=config["nuc-seed-spacing"],
+        max_indel=config["max-indel"],
+    threads: 16
+    conda:
+        "envs/hadv-nextalign.yaml"
+    shell:
+        """
+        conda run -n nextalign \
+          nextalign \
+            --jobs 14 \
+            --in-order \
+            --sequences {input.seq:q} \
+            --reference {input.ref:q} \
+            --genes={params.genes:q} \
+            --genemap {input.gff:q} \
+            --output-dir {params.output_dir:q} \
+            --nuc-seed-length {params.nuc_seed_length} \
+            --nuc-seed-spacing {params.nuc_seed_spacing} \
+            --max-indel {params.max_indel} \
+            1> {log.out:q} \
+            2> {log.err:q}
+        """
+
+
+rule iqtree:
+    message:
+        "Infer maximum-likelihood tree and model of sequence evolution: {wildcards.species}."
+    input:
+        rules.align.output,
+    output:
+        root_out / "{species}" / "iqt.treefile",
+    log:
+        root_out / "{species}" / "iqt.log",
+    params:
+        seed=config["seed"],
+        prefix=lambda wildcards, output: Path(output[0]).parent / "iqt",
+        ufboot=config["ufboot"],
+        ufjack=config["ufjack"],
+    threads: 16
+    conda:
+        "envs/hadv-augur.yaml"
+    shell:
+        """
+        iqtree \
+          -s {input:q} \
+          --seqtype DNA \
+          --prefix {params.prefix:q} \
+          --seed {params.seed} \
+          --redo \
+          -T AUTO \
+          --threads-max {threads} \
+          --allnni \
+          --ufboot {params.ufboot} \
+          --ufjack {params.ufjack} \
+          --bnni \
+          --abayes \
+          1> /dev/null \
+          2> {log:q}
+        """
+
+
+rule gubbins:
+    message:
+        "Infer maximum-likelihood tree and recombination events: {wildcards.species}."
+    input:
+        msa=rules.align.output,
+        tree=rules.iqtree.output,
+    output:
+        tree=root_out / "{species}" / "gub.final_tree.tre",
+        node=root_out / "{species}" / "gub.node_labelled.final_tree.tre",
+        stat=root_out / "{species}" / "gub.per_branch_statistics.csv",
+    log:
+        out=root_out / "{species}" / "gub.out.log",
+        err=root_out / "{species}" / "gub.err.log",
+    params:
+        tree_builder=config["tree_builder"],
+        iterations=config["iterations"],
+        filter_percentage=config["filter_percentage"],
+        root=Path().absolute(),
+        dest=lambda wildcards, output: root_out / wildcards.species / "gub",
+    threads: 16
+    conda:
+        "envs/hadv-gubbins.yaml"
+    # shadow:
+    #     "shallow"
+    shell:
+        """
+        mkdir -p {params.dest:q} && cd {params.dest:q} || exit 1 && \
+        run_gubbins.py {params.root:q}/{input.msa:q} \
+          --starting_tree {params.root:q}/{input.tree:q} \
+          --use_time_stamp \
+          --no_cleanup \
+          --tree_builder {params.tree_builder} \
+          --iterations {params.iterations} \
+          --filter_percentage {params.filter_percentage} \
+          --prefix gub \
+          --threads {threads} \
+          1> {params.root:q}/{log.out:q} \
+          2> {params.root:q}/{log.err:q} && \
+        cp gub.final_tree.tre .. 2>> {params.root:q}/{log.err:q} && \
+        cp gub.node_labelled.final_tree.tre .. 2>> {params.root:q}/{log.err:q} && \
+        cp gub.per_branch_statistics.csv .. 2>> {params.root:q}/{log.err:q}
+        """
+
+
+rule bactdate:
+    message:
+        "Infer recombination-aware chronogram: {wildcards.species}."
+    input:
+        tree=rules.gubbins.output.tree,
+        node=rules.gubbins.output.node,
+        stat=rules.gubbins.output.stat,
+        meta=rules.addmeta.output.meta,
+    output:
+        tree=root_out / "{species}" / "bac.tree",
+        json=root_out / "{species}" / "bac.json",
+        tsv=root_out / "{species}" / "bac.tsv",
+    log:
+        out=root_out / "{species}" / "bac.out.log",
+        msg=root_out / "{species}" / "bac.msg.log",
+    params:
+        models=config["models"],
+        seed=config["seed"],
+        reps=config["reps"],
+        nbIts=config["nbIts"],
+        thin=config["thin"],
+        burn=config["burn"],
+        ess=config["ess"],
+    threads: 16
+    conda:
+        "envs/hadv-r.yaml"
+    script:
+        "scripts/R/bactdate.R"
+
+
+rule mugration:
+    message:
+        "Infer ancestral traits: {wildcards.species}."
+    input:
+        tree=rules.bactdate.output.tree,
+        meta=rules.addmeta.output.meta,
+    output:
+        root_out / "{species}" / "mug.json",
+    log:
+        out=root_out / "{species}" / "mug.out.log",
+        err=root_out / "{species}" / "mug.err.log",
+    params:
+        columns="genotype location GeoNames.country_code",
+    threads: 1
+    conda:
+        "envs/hadv-augur.yaml"
+    script:
+        "scripts/py/mugration.py"
+
+
+rule auspice:
+    message:
+        "Export data files for auspice: {wildcards.species}."
+    input:
+        tree=rules.bactdate.output.tree,
+        branch_lengths=rules.bactdate.output.json,
+        traits=rules.mugration.output,
+        meta=rules.addmeta.output.meta,
+        coor=rules.files.params.coor,
+        ausp=rules.files.params.ausp,
+    params:
+        title=lambda wildcards, output: f"HAdV-{wildcards.species}",
+    output:
+        root_aus / "{species}.json",
+    log:
+        out=root_out / "{species}" / "aus.out.log",
+        err=root_out / "{species}" / "aus.err.log",
+    threads: 1
+    conda:
+        "envs/hadv-augur.yaml"
+    shell:
+        """
+        augur export v2 \
+          --tree {input.tree:q} \
+          --node-data {input.branch_lengths:q} {input.traits:q} \
+          --output {output:q} \
+          --metadata {input.meta:q} \
+          --auspice-config {input.ausp} \
+          --lat-longs {input.coor:q} \
+          --color-by-metadata genotype \
+          --title {params.title:q} \
+          1> {log.out:q} \
+          2> {log.err:q}
+        """

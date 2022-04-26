@@ -1,0 +1,75 @@
+#!/usr/bin/env RScript --vanilla
+
+main <- function(snakemake) {
+  library(rjson)
+  library(phangorn)
+  library(phytools)
+  library(tidyverse)
+
+  path.in.msa <- snakemake@input[["msa"]]
+  path.in.tree <- snakemake@input[["tree"]]
+  path.out.tsv <- snakemake@output[["tsv"]]
+  path.out.seqs <- snakemake@output[["seqs"]]
+  path.out.json <- snakemake@output[["json"]]
+  params <- snakemake@params
+  threads <- snakemake@threads
+
+  set.seed(params$seed)
+  
+  dna <- read.phyDat(path.in.msa, format = "fasta")
+  tree <-read.tree(path.in.tree)
+  mod <- modelTest(dna, unroot(tree), multicore = T, mc.cores = threads)
+  mod <- mod[which.min(mod$BIC), ]
+  write_tsv(mod, path.out.tsv)
+  fit <- optim.pml(pml(tree, dna), optRoptNni = T, optRooted = T, model = mod$model)
+  anc <- as.character(ancestral.pml(fit, type = "bayes", return = "phyDat"))
+  rownames(anc) <- c(tree$tip.label, tree$node.label)
+  write.dna(anc, path.out.seqs, format = "fasta", colsep = "")
+
+  msa <- ape::read.dna(path.out.seqs, format = "fasta", as.matrix = T)
+  ref <- head(rownames(msa), n = 1)
+  segsites <- ape::seg.sites(msa)
+  snp <- msa[, segsites, drop = F]
+  colnames(snp) <- segsites
+  snp <- (
+      as.character(snp) %>%
+      as.data.frame() %>%
+      rownames_to_column() %>%
+      pivot_longer(., cols = tail(colnames(.), -1)) %>%
+      mutate(name = str_remove(name, "^V")) %>%
+      left_join(., filter(., rowname == ref), by = "name")
+  )
+  s <- split(snp, snp$rowname.x)
+  s <- (
+    setNames(
+      lapply(seq_along(s), function(idx) {
+        x <- s[[idx]]
+        k <- names(s)[[idx]]
+        muts <- with(filter(x, value.y != value.x), toupper(paste0(value.y, name, value.x)))
+        list(
+          muts = (if (length(muts) == 1) list(muts) else muts),
+          sequence = toupper(paste0(anc[which(rownames(anc) == k), ], collapse = ""))
+        )
+      }),
+      names(s)
+    )
+  )
+
+  write(
+    toJSON(
+      list(
+        nodes = s,
+        reference = list(
+          nuc = toupper(paste0(anc[which(rownames(anc) == ref), ], collapse = ""))
+        )
+      ),
+      indent = 1
+    ),
+    file = path.out.json
+  )
+}
+
+capture.output(
+  capture.output(main(snakemake), file = snakemake@log[["out"]], type = "output"),
+  file = snakemake@log[["msg"]], type = "message"
+)
