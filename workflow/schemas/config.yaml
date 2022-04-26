@@ -19,7 +19,7 @@ properties:
     type: integer
     description: the maximum number of duplicate sequences
     default: 3
-  # nextalign
+  # Nextalign v1.8.0
   nuc-seed-length:
     type: number
     description: the spacing between seeds during nucleotide alignment

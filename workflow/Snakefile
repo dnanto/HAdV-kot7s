@@ -22,6 +22,8 @@ rule extract:
     log:
         log=root_out / "{species}" / "ext.log",
     threads: 1
+    conda:
+        "envs/hadv-biopython.yaml"
     shell:
         """
         gunzip -c {input.seqs:q} | \
@@ -107,20 +109,19 @@ rule align:
         "envs/hadv-nextalign.yaml"
     shell:
         """
-        conda run -n nextalign \
-          nextalign \
-            --jobs 14 \
-            --in-order \
-            --sequences {input.seq:q} \
-            --reference {input.ref:q} \
-            --genes={params.genes:q} \
-            --genemap {input.gff:q} \
-            --output-dir {params.output_dir:q} \
-            --nuc-seed-length {params.nuc_seed_length} \
-            --nuc-seed-spacing {params.nuc_seed_spacing} \
-            --max-indel {params.max_indel} \
-            1> {log.out:q} \
-            2> {log.err:q}
+        nextalign \
+          --jobs 14 \
+          --in-order \
+          --sequences {input.seq:q} \
+          --reference {input.ref:q} \
+          --genes={params.genes:q} \
+          --genemap {input.gff:q} \
+          --output-dir {params.output_dir:q} \
+          --nuc-seed-length {params.nuc_seed_length} \
+          --nuc-seed-spacing {params.nuc_seed_spacing} \
+          --max-indel {params.max_indel} \
+          1> {log.out:q} \
+          2> {log.err:q}
         """
 
 
