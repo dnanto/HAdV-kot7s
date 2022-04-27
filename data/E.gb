@@ -930,7 +930,7 @@ FEATURES             Location/Qualifiers
                      /protein_id="YP_068047.1"
                      /translation="MKIEGQEEFDIPFRVWRKFAARRGLQYQSWEEGSEVLLTENMDRD
                      LVSDF"
-                     /locus_tag="U exon"
+                     /locus_tag="U_exon"
      CDS             31649..32926
                      /gene="L5"
                      /locus_tag="L5"
