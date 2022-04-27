@@ -3,15 +3,19 @@ glob: data/A.fasta.gz
 seed: 7080
 min_unk: 0.01
 max_dup: 3
+# Nextalign v1.8.0
+nuc-seed-length: 27
+nuc-seed-spacing: 10
+max-indel: 700
 # IQ-TREE v2.0.3
 ufboot: 1000
 ufjack: 1000
 # Gubbins v2.4.1
 tree_builder: fasttree
-iterations: 10
+iterations: 5
 filter_percentage: 100
 # BactDating v1.1
-reps: 1
+reps: 3
 models:
   - poisson
   - negbin
@@ -21,7 +25,7 @@ models:
   - arc
   - carc
   - mixedcarc
-nbIts: 1000
+nbIts: 10000
 thin: 100
 burn: 0.50
 ess: 200
