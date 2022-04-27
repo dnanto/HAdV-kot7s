@@ -3,6 +3,10 @@ glob: data/*.fasta.gz
 seed: 7080
 min_unk: 0.01
 max_dup: 3
+# Nextalign v1.8.0
+nuc-seed-length: 27
+nuc-seed-spacing: 10
+max-indel: 700
 # IQ-TREE v2.0.3
 ufboot: 1000
 ufjack: 1000
