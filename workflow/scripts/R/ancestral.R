@@ -15,9 +15,9 @@ main <- function(snakemake) {
   threads <- snakemake@threads
 
   set.seed(params$seed)
-  
+
   dna <- read.phyDat(path.in.msa, format = "fasta")
-  tree <-read.tree(path.in.tree)
+  tree <- read.tree(path.in.tree)
   mod <- modelTest(dna, unroot(tree), multicore = T, mc.cores = threads)
   mod <- mod[which.min(mod$BIC), ]
   write_tsv(mod, path.out.tsv)
@@ -32,7 +32,7 @@ main <- function(snakemake) {
   snp <- msa[, segsites, drop = F]
   colnames(snp) <- segsites
   snp <- (
-      as.character(snp) %>%
+    as.character(snp) %>%
       as.data.frame() %>%
       rownames_to_column() %>%
       pivot_longer(., cols = tail(colnames(.), -1)) %>%

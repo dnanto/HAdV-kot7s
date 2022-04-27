@@ -4,12 +4,13 @@ include: "rules/target.smk"
 
 rule files:
     params:
-        ausp=root_cfg / "ausp.json",
-        excl=root_cfg / "excl.txt",
-        meta=root_dat / "meta.tsv",
-        coor=root_dat / "coor.tsv",
-        fast=root_dat / "{species}.fasta",
-        gff3=root_dat / "{species}.gff3",
+        ausp=config.get("auspice", root_cfg / "auspice.json"),
+        excl=config.get("exclude", root_cfg / "exclude.txt"),
+        meta=config.get("meta", root_dat / "meta.tsv"),
+        coor=config.get("coor", root_dat / "coor.tsv"),
+        fast=config.get("fasta", root_dat / f"{species}.fasta"),
+        genb=config.get("genbank", root_dat / f"{species}.gb"),
+        gff3=config.get("gff3", root_dat / f"{species}.gff3"),
 
 
 rule extract:
@@ -110,7 +111,7 @@ rule align:
     shell:
         """
         nextalign \
-          --jobs 14 \
+          --jobs {threads} \
           --in-order \
           --sequences {input.seq:q} \
           --reference {input.ref:q} \
@@ -214,6 +215,7 @@ rule bactdate:
         node=rules.gubbins.output.node,
         stat=rules.gubbins.output.stat,
         meta=rules.addmeta.output.meta,
+        fast=rules.align.output,
     output:
         tree=root_out / "{species}" / "bac.tree",
         json=root_out / "{species}" / "bac.json",
@@ -256,6 +258,58 @@ rule mugration:
         "scripts/py/mugration.py"
 
 
+rule ancestral:
+    message:
+        "Infer ancestral sequences: {wildcards.species}."
+    input:
+        tree=rules.bactdate.output.tree,
+        seqs=rules.align.output,
+    output:
+        root_out / "{species}" / "mut.nt.json",
+    log:
+        out=root_out / "{species}" / "mut.nt.out.log",
+        err=root_out / "{species}" / "mug.nt.err.log",
+    threads: 1
+    conda:
+        "envs/hadv-augur.yaml"
+    shell:
+        """
+        augur ancestral \
+          --tree {input.tree:q} \
+          --alignment {input.seqs:q} \
+          --output-node-data {output:q} \
+          1> {log.out:q} \
+          2> {log.err:q}
+        """
+
+
+rule translate:
+    message:
+        "Translate gene sequences: {wildcards.species}."
+    input:
+        tree=rules.bactdate.output.tree,
+        json=rules.ancestral.output,
+        genb=rules.files.params.genb,
+    output:
+        root_out / "{species}" / "mut.aa.json",
+    log:
+        out=root_out / "{species}" / "mut.aa.out.log",
+        err=root_out / "{species}" / "mug.aa.err.log",
+    threads: 1
+    conda:
+        "envs/hadv-augur.yaml"
+    shell:
+        """
+        augur translate \
+          --tree {input.tree:q} \
+          --ancestral-sequences {input.json:q} \
+          --reference-sequence {input.genb:q} \
+          --output-node-data {output:q} \
+          1> {log.out:q} \
+          2> {log.err:q}
+        """
+
+
 rule auspice:
     message:
         "Export data files for auspice: {wildcards.species}."
@@ -263,13 +317,15 @@ rule auspice:
         tree=rules.bactdate.output.tree,
         branch_lengths=rules.bactdate.output.json,
         traits=rules.mugration.output,
+        mut_nt=rules.ancestral.output,
+        mut_aa=rules.translate.output,
         meta=rules.addmeta.output.meta,
         coor=rules.files.params.coor,
         ausp=rules.files.params.ausp,
     params:
         title=lambda wildcards, output: f"HAdV-{wildcards.species}",
     output:
-        root_aus / "{species}.json",
+        root_out / "auspice" / "{species}.json",
     log:
         out=root_out / "{species}" / "aus.out.log",
         err=root_out / "{species}" / "aus.err.log",
@@ -280,7 +336,7 @@ rule auspice:
         """
         augur export v2 \
           --tree {input.tree:q} \
-          --node-data {input.branch_lengths:q} {input.traits:q} \
+          --node-data {input.branch_lengths:q} {input.traits:q} {input.mut_nt:q} {input.mut_aa:q} \
           --output {output:q} \
           --metadata {input.meta:q} \
           --auspice-config {input.ausp} \

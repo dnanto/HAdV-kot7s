@@ -8,6 +8,7 @@ main <- function(snakemake) {
   path.in.node <- snakemake@input[["node"]]
   path.in.stat <- snakemake@input[["stat"]]
   path.in.meta <- snakemake@input[["meta"]]
+  path.in.fast <- snakemake@input[["fast"]]
   path.out.tree <- snakemake@output[["tree"]]
   path.out.json <- snakemake@output[["json"]]
   path.out.tsv <- snakemake@output[["tsv"]]
@@ -34,9 +35,9 @@ main <- function(snakemake) {
     expand.grid(model = params$models, rep = 1:params$reps),
     parallel::mcmapply(
       function(model, rep, seed) {
-        set.seed(seed)
         path <- file.path(root, paste0("bac-", model, "-", rep, ".qs"))
         if (!file.exists(path)) {
+          set.seed(seed)
           run <- bactdate(phy, phy$tip.date, nbIts = params$nbIts, thin = params$thin, model = model, useRec = T)
           run$seed <- seed
           run$rep <- rep
@@ -51,6 +52,7 @@ main <- function(snakemake) {
 
   # model comparison
   key <- c("likelihood", "mu", "sigma", "alpha", "prior")
+  aln <- ncol(ape::read.dna(path.in.fast, format = "fasta", as.character = T))
   df.diagnostic <- (
     parallel::mclapply(
       paths,
@@ -65,14 +67,24 @@ main <- function(snakemake) {
             setNames(paste0("est.", key))
         )
         ess <- setNames(coda::effectiveSize(rec), paste0("ess.", key))
+        rate <- ((
+          enframe(capture.output(run)[14], NULL) %>%
+            separate(value, c("_", "rate", "__", "low", "high", "___"), "[=\\[\\]; ]") %>%
+            with(c(as.numeric(rate) / aln, as.numeric(low) / aln, as.numeric(high) / aln)) %>%
+            formatC(format = "e", digits = 2) %>%
+            {
+              paste(.[1], " [", .[2], ";", .[3], "]", sep = "")
+            })
+        )
         c(
           path = path,
           model = as.character(run$model),
-          seed = run$seed,
           rep = run$rep,
+          seed = run$seed,
           dic = run$dic,
-          mu = run$mu,
           rootprob = run$rootprob,
+          est.rate = rate,
+          est.root_date_likeliest = str_split_fixed(capture.output(run)[18], "=", 2)[, 2],
           est,
           ess
         )
@@ -83,13 +95,15 @@ main <- function(snakemake) {
       mutate(
         across(starts_with("ess."), as.numeric),
         ess.threshold = params$ess,
-        pass =        params$ess <= ess.likelihood,
-        pass = pass & params$ess <= ess.mu,
-        pass = pass & params$ess <= ess.alpha,
-        pass = pass & params$ess <= ess.prior,
-        pass = (pass & model %in% c("poisson", "strictgamma")) | (params$ess <= ess.sigma)
+        pass = (
+          (params$ess <= ess.sigma | model == "poisson" | model == "strictgamma") &
+            params$ess <= ess.likelihood &
+            params$ess <= ess.mu &
+            params$ess <= ess.alpha &
+            params$ess <= ess.prior
+        )
       ) %>%
-      arrange(desc(pass), desc(dic), across(starts_with("ess."), desc))
+      arrange(desc(pass), desc(dic))
   )
 
   # output

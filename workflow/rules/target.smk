@@ -1,6 +1,6 @@
 rule target_auspice:
     input:
-        expand(root_aus / "{species}.json", species=speciess),
+        expand(root_out / "auspice" / "{species}.json", species=speciess),
 
 
 rule target_bactdate:
