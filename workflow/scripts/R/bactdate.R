@@ -96,14 +96,14 @@ main <- function(snakemake) {
         across(starts_with("ess."), as.numeric),
         ess.threshold = params$ess,
         pass = (
-          (params$ess <= ess.sigma | model == "poisson" | model == "strictgamma") &
-            params$ess <= ess.likelihood &
-            params$ess <= ess.mu &
-            params$ess <= ess.alpha &
-            params$ess <= ess.prior
+          (params$ess <= ess.sigma | model == "poisson" | model == "strictgamma") +
+            (params$ess <= ess.likelihood) +
+            (params$ess <= ess.mu) +
+            (params$ess <= ess.alpha) +
+            (params$ess <= ess.prior)
         )
       ) %>%
-      arrange(desc(pass), desc(dic))
+      arrange(desc(pass), desc(dic), across(starts_with("ess."), desc))
   )
 
   # output

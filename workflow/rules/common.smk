@@ -12,7 +12,7 @@ root_out = Path("results")
 
 genes = {}
 speciess = []
-for path in Path().glob(config["glob"]):
+for path in Path().glob(config["seqs"]):
     # parse species
     species = path.name.split(".", maxsplit=1)[0]
     speciess.append(species)

@@ -11,7 +11,7 @@ conda activate hadv
 
 Run the workflow for HAdV-A:
 ```
-snakemake --config glob=data/A.fasta.gz --printshellcmds --configfile config/test.yaml --cores 10 target_auspice
+snakemake --config seqs=data/A.fasta.gz --printshellcmds --configfile config/test.yaml --set-threads iqtree=4 --cores 10 target_auspice
 ```
 
 Run the server:

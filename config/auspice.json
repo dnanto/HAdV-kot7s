@@ -10,12 +10,12 @@
   "colorings": [
     {
       "key": "genotype",
-      "title": "genotype",
+      "title": "Genotype (HAdV)",
       "type": "categorical"
     },
     {
-      "key": "country_code",
-      "title": "country_code",
+      "key": "location",
+      "title": "Location",
       "type": "categorical"
     }
   ],
@@ -31,6 +31,7 @@
     "map_triplicate": true
   },
   "filters": [
-    "genotype"
+    "genotype",
+    "location"
   ]
 }

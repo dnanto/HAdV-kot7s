@@ -4,7 +4,7 @@ description: the parameters for the workflow
 
 properties:
   # global
-  glob:
+  seqs:
     type: string
     description: the path glob pattern to the input gzip FASTA files
   seed:

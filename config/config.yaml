@@ -1,5 +1,5 @@
 # global
-glob: data/*.fasta.gz
+seqs: data/*.fasta.gz
 seed: 7080
 min_unk: 0.01
 max_dup: 3

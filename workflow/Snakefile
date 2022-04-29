@@ -250,7 +250,7 @@ rule mugration:
         out=root_out / "{species}" / "mug.out.log",
         err=root_out / "{species}" / "mug.err.log",
     params:
-        columns="genotype location GeoNames.country_code",
+        columns="genotype location",
     threads: 1
     conda:
         "envs/hadv-augur.yaml"
