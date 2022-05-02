@@ -8,7 +8,7 @@ validate(config, "../schemas/config.yaml")
 
 root_cfg = Path("config")
 root_dat = Path("data")
-root_out = Path("results")
+root_out = Path(config["out"])
 
 genes = {}
 groups = []

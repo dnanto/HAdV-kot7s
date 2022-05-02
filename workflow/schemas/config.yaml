@@ -19,6 +19,10 @@ properties:
     type: integer
     description: the maximum number of duplicate sequences
     default: 3
+  out:
+    type: string
+    description: the output path
+    default: results
   # Nextalign
   nuc-seed-length:
     type: number

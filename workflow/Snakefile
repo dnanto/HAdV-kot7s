@@ -4,13 +4,13 @@ include: "rules/target.smk"
 
 rule files:
     params:
-        auspice=config.get("auspice", root_cfg / "auspice.json"),
-        exclude=config.get("exclude", root_cfg / "exclude.txt"),
-        meta=config.get("meta", root_dat / "meta.tsv"),
-        coor=config.get("coor", root_dat / "coor.tsv"),
-        gff3=config.get("genbank", root_dat / f"{group}.gff3"),
-        fasta=config.get("genbank", root_dat / f"{group}.fasta"),
-        genbank=config.get("genbank", root_dat / f"{group}.gb"),
+        auspice=Path(config.get("auspice", root_cfg / "auspice.json")),
+        exclude=Path(config.get("exclude", root_cfg / "exclude.txt")),
+        meta=Path(config.get("meta", root_dat / "meta.tsv")),
+        coor=Path(config.get("coor", root_dat / "coor.tsv")),
+        gff3=Path(config.get("gff3", root_dat / f"{group}.gff3")),
+        fasta=Path(config.get("fasta", root_dat / f"{group}.fasta")),
+        genbank=Path(config.get("genbank", root_dat / f"{group}.gb")),
 
 
 rule extract:
