@@ -19,7 +19,7 @@ properties:
     type: integer
     description: the maximum number of duplicate sequences
     default: 3
-  # Nextalign v1.8.0
+  # Nextalign
   nuc-seed-length:
     type: number
     description: the spacing between seeds during nucleotide alignment
@@ -32,7 +32,7 @@ properties:
     type: number
     description: the maximum length of insertions or deletions allowed to proceed with alignment
     default: 700
-  # IQ-TREE v2.0.3
+  # IQ-TREE
   ufboot:
     type: integer
     description: the replicates for ultrafast bootstrap (>=1000)
@@ -41,7 +41,7 @@ properties:
     type: integer
     description: the replicates for ultrafast jackknife (>=1000)
     default: 1000
-  # Gubbins v2.4.1
+  # Gubbins
   tree_builder:
     type: string
     description: the application to use for tree building {raxml,fasttree,hybrid}
