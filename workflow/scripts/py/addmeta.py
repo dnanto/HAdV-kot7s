@@ -20,13 +20,17 @@ def main(snakemake):
         reader = DictReader(file, delimiter=delimiter)
         meta = OrderedDict((row["strain"], row) for row in reader)
     with open(snakemake.output.meta, "w") as file:
-        fields = ("seguid", "unknown")
+        fields = ("seguid", "unknown", "clade_membership")
         writer = DictWriter(file, (*reader.fieldnames, *fields), delimiter=delimiter)
         writer.writeheader()
         for record in SeqIO.parse(snakemake.input.seqs, "fasta"):
             pct_unk = (record.seq.upper().count("N")) / len(record)
+            clade = f"gt{meta[record.id]['genotype']}"
             writer.writerow(
-                {**meta[record.id], **dict(zip(fields, (seguid(record.seq), pct_unk)))}
+                {
+                    **meta[record.id],
+                    **dict(zip(fields, (seguid(record.seq), pct_unk, clade))),
+                }
             )
     return 0
 

@@ -17,7 +17,7 @@ rule extract:
     message:
         "Extract and format sequences: {wildcards.group}."
     input:
-        seqs=root_dat / "{group}.fasta.gz",
+        seqs=config["seqs"],
     output:
         seqs=root_out / "{group}" / "ext.fasta",
     log:
@@ -27,7 +27,7 @@ rule extract:
         "envs/hadv-biopython.yaml"
     shell:
         """
-        gunzip -c {input.seqs:q} | \
+        gunzip -c {input.seqs:q} || cat {input.seqs:q} | \
         sed -E -e '/^>/ s/:.*//g' -e '/^>/ s/ .*//g' -e '/^[^>]/ s/[^ACGTNacgtn-]/N/g' \
             1> {output.seqs:q} \
             2> {log.log:q}
@@ -250,7 +250,7 @@ rule mugration:
         out=root_out / "{group}" / "mug.out.log",
         err=root_out / "{group}" / "mug.err.log",
     params:
-        columns="genotype location",
+        columns="genotype clade_membership location",
     threads: 1
     conda:
         "envs/hadv-augur.yaml"
@@ -322,13 +322,13 @@ rule auspice:
         meta=rules.addmeta.output.meta,
         coor=rules.files.params.coor,
         ausp=rules.files.params.auspice,
-    params:
-        title=lambda wildcards, output: f"HAdV-{wildcards.group}",
     output:
         root_out / "auspice" / "{group}.json",
     log:
         out=root_out / "{group}" / "aus.out.log",
         err=root_out / "{group}" / "aus.err.log",
+    params:
+        title=lambda wildcards, output: f"HAdV-{wildcards.group}",
     threads: 1
     conda:
         "envs/hadv-augur.yaml"
@@ -343,6 +343,70 @@ rule auspice:
           --lat-longs {input.coor:q} \
           --color-by-metadata genotype \
           --title {params.title:q} \
+          1> {log.out:q} \
+          2> {log.err:q}
+        """
+
+
+rule properties:
+    message:
+        "Output virus properties: {wildcards.group}"
+    input:
+        msa=rules.align.output[0],
+        ref=rules.files.params.fasta,
+        meta=rules.addmeta.output.meta,
+    output:
+        json=root_out / "{group}" / "prop.json",
+    log:
+        log=root_out / "{group}" / "prop.log",
+    threads: 1
+    conda:
+        "hadv-biopython.yaml"
+    script:
+        "scripts/py/properties.py"
+
+
+rule nextlade:
+    message:
+        "Assign clade to sample sequences: {wildcards.group}"
+    input:
+        sample=config["sample"],
+        ref=rules.files.params.fasta,
+        tree=rules.auspice.output,
+        gff3=rules.files.params.gff3,
+        qc=config["qc"],
+        prop=rules.properties.output.json,
+    output:
+        tsv=root_out / "{group}" / "next.tsv",
+    log:
+        out=root_out / "{group}" / "next.out.log",
+        err=root_out / "{group}" / "next.err.log",
+    params:
+        genes=lambda wildcards, output: genes[Path(output[0]).parent.name],
+        output_dir=lambda wildcards, output: Path(output[0]).parent,
+        nuc_seed_length=config["nuc-seed-length"],
+        nuc_seed_spacing=config["nuc-seed-spacing"],
+        max_indel=config["max-indel"],
+    threads: 16
+    conda:
+        "hadv-biopython.yaml"
+    shell:
+        """
+        conda run -n nextclade \
+        nextclade \
+          --jobs {threads} \
+          --input-fasta {input.sample:q} \
+          --input-root-seq {input.ref:q} \
+          --input-tree {input.tree:q} \
+          --genes {params.genes:q} \
+          --input-gene-map {input.gff3:q} \
+          --output-dir {params.output_dir:q} \
+          --nuc-seed-length {params.nuc_seed_length} \
+          --nuc-seed-spacing {params.nuc_seed_spacing} \
+          --max-indel {params.max_indel} \
+          --input-qc-config {input.qc} \
+          --input-virus-properties {input.prop:q} \
+          --output-tsv {output.tsv:q} \
           1> {log.out:q} \
           2> {log.err:q}
         """

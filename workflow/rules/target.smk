@@ -1,3 +1,13 @@
+rule target_nextclade:
+    input:
+        expand(root_out / "{group}" / "next.tsv", group=groups),
+
+
+rule target_properties:
+    input:
+        expand(root_out / "{group}" / "prop.json", group=groups),
+
+
 rule target_auspice:
     input:
         expand(root_out / "auspice" / "{group}.json", group=groups),

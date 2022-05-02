@@ -54,7 +54,7 @@ properties:
     type: integer
     description: the value to filter out taxa with more than this percentage of gaps in [0, 100]
     default: 100
-  # BactDating v1.1
+  # BactDating
   reps:
     type: integer
     description: the number of replicate runs per model
@@ -87,3 +87,8 @@ properties:
     type: number
     description: the ESS threshold
     default: 200
+  # Nextclade
+  sample:
+    type: string
+  qc:
+    type: string
