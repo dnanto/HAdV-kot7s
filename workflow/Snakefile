@@ -4,24 +4,24 @@ include: "rules/target.smk"
 
 rule files:
     params:
-        ausp=config.get("auspice", root_cfg / "auspice.json"),
-        excl=config.get("exclude", root_cfg / "exclude.txt"),
+        auspice=config.get("auspice", root_cfg / "auspice.json"),
+        exclude=config.get("exclude", root_cfg / "exclude.txt"),
         meta=config.get("meta", root_dat / "meta.tsv"),
         coor=config.get("coor", root_dat / "coor.tsv"),
-        fast=config.get("fasta", root_dat / f"{species}.fasta"),
-        genb=config.get("genbank", root_dat / f"{species}.gb"),
-        gff3=config.get("gff3", root_dat / f"{species}.gff3"),
+        gff3=config.get("genbank", root_dat / f"{group}.gff3"),
+        fasta=config.get("genbank", root_dat / f"{group}.fasta"),
+        genbank=config.get("genbank", root_dat / f"{group}.gb"),
 
 
 rule extract:
     message:
-        "Extract and format sequences: {wildcards.species}."
+        "Extract and format sequences: {wildcards.group}."
     input:
-        seqs=root_dat / "{species}.fasta.gz",
+        seqs=root_dat / "{group}.fasta.gz",
     output:
-        seqs=root_out / "{species}" / "ext.fasta",
+        seqs=root_out / "{group}" / "ext.fasta",
     log:
-        log=root_out / "{species}" / "ext.log",
+        log=root_out / "{group}" / "ext.log",
     threads: 1
     conda:
         "envs/hadv-biopython.yaml"
@@ -36,14 +36,14 @@ rule extract:
 
 rule addmeta:
     message:
-        "Calculate sequence properties: {wildcards.species}."
+        "Calculate sequence properties: {wildcards.group}."
     input:
         seqs=rules.extract.output.seqs,
         meta=rules.files.params.meta,
     output:
-        meta=root_out / "{species}" / "meta.tsv",
+        meta=root_out / "{group}" / "meta.tsv",
     log:
-        log=root_out / "{species}" / "meta.log",
+        log=root_out / "{group}" / "meta.log",
     threads: 1
     conda:
         "envs/hadv-biopython.yaml"
@@ -53,16 +53,16 @@ rule addmeta:
 
 rule filter:
     message:
-        "Extract, format, and filter sequences: {wildcards.species}."
+        "Extract, format, and filter sequences: {wildcards.group}."
     input:
         data=rules.extract.output.seqs,
         meta=rules.addmeta.output.meta,
-        excl=rules.files.params.excl,
+        excl=rules.files.params.exclude,
     output:
-        root_out / "{species}" / "seq.fasta",
+        root_out / "{group}" / "seq.fasta",
     log:
-        out=root_out / "{species}" / "seq.out.log",
-        err=root_out / "{species}" / "seq.err.log",
+        out=root_out / "{group}" / "seq.out.log",
+        err=root_out / "{group}" / "seq.err.log",
     params:
         seed=config["seed"],
         max_dup=config["max_dup"],
@@ -89,16 +89,16 @@ rule filter:
 
 rule align:
     message:
-        "Perform gene-aware multiple sequence alignment: {wildcards.species}."
+        "Perform gene-aware multiple sequence alignment: {wildcards.group}."
     input:
         seq=rules.filter.output,
-        ref=rules.files.params.fast,
+        ref=rules.files.params.fasta,
         gff=rules.files.params.gff3,
     output:
-        root_out / "{species}" / "seq.aligned.fasta",
+        root_out / "{group}" / "seq.aligned.fasta",
     log:
-        out=root_out / "{species}" / "aln.out.log",
-        err=root_out / "{species}" / "aln.err.log",
+        out=root_out / "{group}" / "aln.out.log",
+        err=root_out / "{group}" / "aln.err.log",
     params:
         genes=lambda wildcards, output: genes[Path(output[0]).parent.name],
         output_dir=lambda wildcards, output: Path(output[0]).parent,
@@ -128,13 +128,13 @@ rule align:
 
 rule iqtree:
     message:
-        "Infer maximum-likelihood tree and model of sequence evolution: {wildcards.species}."
+        "Infer maximum-likelihood tree and model of sequence evolution: {wildcards.group}."
     input:
         rules.align.output,
     output:
-        root_out / "{species}" / "iqt.treefile",
+        root_out / "{group}" / "iqt.treefile",
     log:
-        root_out / "{species}" / "iqt.log",
+        root_out / "{group}" / "iqt.log",
     params:
         seed=config["seed"],
         prefix=lambda wildcards, output: Path(output[0]).parent / "iqt",
@@ -165,23 +165,23 @@ rule iqtree:
 
 rule gubbins:
     message:
-        "Infer maximum-likelihood tree and recombination events: {wildcards.species}."
+        "Infer maximum-likelihood tree and recombination events: {wildcards.group}."
     input:
         msa=rules.align.output,
         tree=rules.iqtree.output,
     output:
-        tree=root_out / "{species}" / "gub.final_tree.tre",
-        node=root_out / "{species}" / "gub.node_labelled.final_tree.tre",
-        stat=root_out / "{species}" / "gub.per_branch_statistics.csv",
+        tree=root_out / "{group}" / "gub.final_tree.tre",
+        node=root_out / "{group}" / "gub.node_labelled.final_tree.tre",
+        stat=root_out / "{group}" / "gub.per_branch_statistics.csv",
     log:
-        out=root_out / "{species}" / "gub.out.log",
-        err=root_out / "{species}" / "gub.err.log",
+        out=root_out / "{group}" / "gub.out.log",
+        err=root_out / "{group}" / "gub.err.log",
     params:
         tree_builder=config["tree_builder"],
         iterations=config["iterations"],
         filter_percentage=config["filter_percentage"],
         root=Path().absolute(),
-        dest=lambda wildcards, output: root_out / wildcards.species / "gub",
+        dest=lambda wildcards, output: root_out / wildcards.group / "gub",
     threads: 16
     conda:
         "envs/hadv-gubbins.yaml"
@@ -209,7 +209,7 @@ rule gubbins:
 
 rule bactdate:
     message:
-        "Infer recombination-aware chronogram: {wildcards.species}."
+        "Infer recombination-aware chronogram: {wildcards.group}."
     input:
         tree=rules.gubbins.output.tree,
         node=rules.gubbins.output.node,
@@ -217,12 +217,12 @@ rule bactdate:
         meta=rules.addmeta.output.meta,
         fast=rules.align.output,
     output:
-        tree=root_out / "{species}" / "bac.tree",
-        json=root_out / "{species}" / "bac.json",
-        tsv=root_out / "{species}" / "bac.tsv",
+        tree=root_out / "{group}" / "bac.tree",
+        json=root_out / "{group}" / "bac.json",
+        tsv=root_out / "{group}" / "bac.tsv",
     log:
-        out=root_out / "{species}" / "bac.out.log",
-        msg=root_out / "{species}" / "bac.msg.log",
+        out=root_out / "{group}" / "bac.out.log",
+        msg=root_out / "{group}" / "bac.msg.log",
     params:
         models=config["models"],
         seed=config["seed"],
@@ -240,15 +240,15 @@ rule bactdate:
 
 rule mugration:
     message:
-        "Infer ancestral traits: {wildcards.species}."
+        "Infer ancestral traits: {wildcards.group}."
     input:
         tree=rules.bactdate.output.tree,
         meta=rules.addmeta.output.meta,
     output:
-        root_out / "{species}" / "mug.json",
+        root_out / "{group}" / "mug.json",
     log:
-        out=root_out / "{species}" / "mug.out.log",
-        err=root_out / "{species}" / "mug.err.log",
+        out=root_out / "{group}" / "mug.out.log",
+        err=root_out / "{group}" / "mug.err.log",
     params:
         columns="genotype location",
     threads: 1
@@ -260,15 +260,15 @@ rule mugration:
 
 rule ancestral:
     message:
-        "Infer ancestral sequences: {wildcards.species}."
+        "Infer ancestral sequences: {wildcards.group}."
     input:
         tree=rules.bactdate.output.tree,
         seqs=rules.align.output,
     output:
-        root_out / "{species}" / "mut.nt.json",
+        root_out / "{group}" / "mut.nt.json",
     log:
-        out=root_out / "{species}" / "mut.nt.out.log",
-        err=root_out / "{species}" / "mug.nt.err.log",
+        out=root_out / "{group}" / "mut.nt.out.log",
+        err=root_out / "{group}" / "mug.nt.err.log",
     threads: 1
     conda:
         "envs/hadv-augur.yaml"
@@ -285,16 +285,16 @@ rule ancestral:
 
 rule translate:
     message:
-        "Translate gene sequences: {wildcards.species}."
+        "Translate gene sequences: {wildcards.group}."
     input:
         tree=rules.bactdate.output.tree,
         json=rules.ancestral.output,
-        genb=rules.files.params.genb,
+        genb=rules.files.params.genbank,
     output:
-        root_out / "{species}" / "mut.aa.json",
+        root_out / "{group}" / "mut.aa.json",
     log:
-        out=root_out / "{species}" / "mut.aa.out.log",
-        err=root_out / "{species}" / "mug.aa.err.log",
+        out=root_out / "{group}" / "mut.aa.out.log",
+        err=root_out / "{group}" / "mug.aa.err.log",
     threads: 1
     conda:
         "envs/hadv-augur.yaml"
@@ -312,7 +312,7 @@ rule translate:
 
 rule auspice:
     message:
-        "Export data files for auspice: {wildcards.species}."
+        "Export data files for auspice: {wildcards.group}."
     input:
         tree=rules.bactdate.output.tree,
         branch_lengths=rules.bactdate.output.json,
@@ -321,14 +321,14 @@ rule auspice:
         mut_aa=rules.translate.output,
         meta=rules.addmeta.output.meta,
         coor=rules.files.params.coor,
-        ausp=rules.files.params.ausp,
+        ausp=rules.files.params.auspice,
     params:
-        title=lambda wildcards, output: f"HAdV-{wildcards.species}",
+        title=lambda wildcards, output: f"HAdV-{wildcards.group}",
     output:
-        root_out / "auspice" / "{species}.json",
+        root_out / "auspice" / "{group}.json",
     log:
-        out=root_out / "{species}" / "aus.out.log",
-        err=root_out / "{species}" / "aus.err.log",
+        out=root_out / "{group}" / "aus.out.log",
+        err=root_out / "{group}" / "aus.err.log",
     threads: 1
     conda:
         "envs/hadv-augur.yaml"

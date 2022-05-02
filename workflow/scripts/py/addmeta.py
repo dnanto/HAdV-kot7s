@@ -18,14 +18,16 @@ def main(snakemake):
     delimiter = "\t"
     with open(snakemake.input.meta) as file:
         reader = DictReader(file, delimiter=delimiter)
-        meta = OrderedDict((row["strain"], row )for row in reader)
+        meta = OrderedDict((row["strain"], row) for row in reader)
     with open(snakemake.output.meta, "w") as file:
         fields = ("seguid", "unknown")
         writer = DictWriter(file, (*reader.fieldnames, *fields), delimiter=delimiter)
         writer.writeheader()
         for record in SeqIO.parse(snakemake.input.seqs, "fasta"):
             pct_unk = (record.seq.upper().count("N")) / len(record)
-            writer.writerow({**meta[record.id], **dict(zip(fields, (seguid(record.seq), pct_unk)))})
+            writer.writerow(
+                {**meta[record.id], **dict(zip(fields, (seguid(record.seq), pct_unk)))}
+            )
     return 0
 
 

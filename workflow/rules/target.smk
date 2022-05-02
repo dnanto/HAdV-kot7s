@@ -1,37 +1,37 @@
 rule target_auspice:
     input:
-        expand(root_out / "auspice" / "{species}.json", species=speciess),
+        expand(root_out / "auspice" / "{group}.json", group=groups),
 
 
 rule target_bactdate:
     input:
         expand(
-            root_out / "{species}" / "bac.{ext}",
-            species=speciess,
+            root_out / "{group}" / "bac.{ext}",
+            group=groups,
             ext=("tree", "json", "tsv"),
         ),
 
 
 rule target_gubbins:
     input:
-        expand(root_out / "{species}" / "gub.final_tree.tre", species=speciess),
+        expand(root_out / "{group}" / "gub.final_tree.tre", group=groups),
 
 
 rule target_iqtree:
     input:
-        expand(root_out / "{species}" / "iqt.treefile", species=speciess),
+        expand(root_out / "{group}" / "iqt.treefile", group=groups),
 
 
 rule target_align:
     input:
-        expand(root_out / "{species}" / "seq.aligned.fasta", species=speciess),
+        expand(root_out / "{group}" / "seq.aligned.fasta", group=groups),
 
 
 rule target_filter:
     input:
-        expand(root_out / "{species}" / "seq.fasta", species=speciess),
+        expand(root_out / "{group}" / "seq.fasta", group=groups),
 
 
 rule target_addmeta:
     input:
-        expand(root_out / "{species}" / "meta.tsv", species=speciess),
+        expand(root_out / "{group}" / "meta.tsv", group=groups),
