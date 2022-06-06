@@ -1,12 +1,13 @@
-#!/usr/bin/env 
+#!/usr/bin/env
 
 species="${1:-A}"
 iter="${2:-3}"
+cores="${3:-28}"
 
 for (( i=1; i<=iter; i++ ))
-do    
+do
     root="experiment/$species/$i" && \
-    
+
     mkdir -p "$root" && \
 
     augur filter \
@@ -37,16 +38,16 @@ do
       --printshellcmds \
       --config \
         seed="$RANDOM" \
-        seqs="$root/ref.fasta" \
+        seqs="$root/$species.fasta" \
         fasta="data/$species.fasta" \
         gff3="data/$species.gff3" \
         genbank="data/$species.gb" \
+        nbIts=10000 \
         sample="$root/qry.fasta" \
         qc=config/qc.json \
         out="$root" \
       --configfile config/test.yaml \
       --set-threads iqtree=4 \
-      --cores 10 \
-      target_nextclade > \
-      "$root/snakemake.log"
+      --cores "$cores" \
+      target_nextclade
 done
