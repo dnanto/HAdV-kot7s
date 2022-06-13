@@ -42,6 +42,7 @@ do
         fasta="data/$species.fasta" \
         gff3="data/$species.gff3" \
         genbank="data/$species.gb" \
+        tree_builder=fasttree \
         nbIts=10000 \
         sample="$root/qry.fasta" \
         qc=config/qc.json \
