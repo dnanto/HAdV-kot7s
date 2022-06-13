@@ -17,7 +17,7 @@ do
       --group-by genotype \
       --sequences-per-group 3 \
       --subsample-seed "$RANDOM" \
-      --output "$root/ref.fasta" && \
+      --output "$root/$species.fasta" && \
 
     grep \> "$root/ref.fasta" | \
       tr -d \> | \
